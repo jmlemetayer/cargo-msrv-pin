@@ -78,6 +78,9 @@ cargo msrv-pin <toolchain> [-C <path>] [-v]
    `rust_version` exceeds the target toolchain.
 1. For each one, query crates.io for the highest non-yanked, non-pre-release
    version whose own `rust_version` fits the target toolchain.
+   - If it's a direct dependency whose own `Cargo.toml` entry rules out
+     that version, relax the entry first. Otherwise the downgrade would
+     fail the same way no matter how many times it's retried.
 1. Downgrade one package at a time with `cargo update --precise`, re-reading
    `cargo metadata` after every update. A single `cargo update` can also
    move unrelated transitive dependencies, so the whole picture is

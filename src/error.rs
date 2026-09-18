@@ -35,6 +35,9 @@ pub enum Error {
         #[source]
         source: reqwest::Error,
     },
+
+    #[error("parsing Cargo.toml")]
+    ParseManifest(#[from] toml_edit::TomlError),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

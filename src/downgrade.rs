@@ -8,6 +8,7 @@
 use crate::command::command_run;
 use crate::error::{Error, Result};
 use crate::lockfile;
+use crate::manifest;
 use crate::metadata::{cargo_metadata, incompatible_packages};
 use crate::registry::resolve_compatible_crate_version;
 use crate::version::Toolchain;
@@ -29,6 +30,18 @@ fn cargo_check(toolchain: &Toolchain) -> Result<()> {
     command_run(&["cargo", &tc, "check"])
 }
 
+/// A package's own Cargo.toml requirement can exclude the only compatible
+/// version (e.g. a bare version string defaults to a caret requirement,
+/// ruling out every version below it). Unlike a transitive conflict, no
+/// later iteration ever clears that on its own, since the requirement lives
+/// in the local package's manifest, not in another registry package.
+fn relax_and_log(name: &str, new_version: &str) -> Result<()> {
+    if manifest::relax_if_blocking(name, new_version)? {
+        log::info!("relaxed {name}'s requirement in Cargo.toml to allow {new_version}");
+    }
+    Ok(())
+}
+
 /// Try to make progress on one incompatible package by downgrading it
 /// directly. Reports whether it succeeded.
 fn try_advance(name: &str, version: &str, toolchain: &Toolchain) -> Result<bool> {
@@ -39,6 +52,7 @@ fn try_advance(name: &str, version: &str, toolchain: &Toolchain) -> Result<bool>
             return Ok(false);
         }
     };
+    relax_and_log(name, &new_version)?;
     match cargo_update(name, version, &new_version, toolchain) {
         Ok(()) => Ok(true),
         Err(Error::Command(_)) => {
