@@ -2,5 +2,20 @@
 name = "cargo-msrv-pin"
 version = "0.1.0"
 edition = "2024"
+description = "Downgrade Cargo dependencies to versions compatible with a given toolchain"
+license = "MIT"
+repository = "https://github.com/jmlemetayer/cargo-msrv-pin"
+readme = "README.md"
+keywords = ["cargo-subcommand", "msrv", "toolchain"]
+categories = ["command-line-utilities", "development-tools::cargo-plugins"]
 
 [dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+env_logger = "0.11.11"
+log = "0.4.34"
+reqwest = { version = "0.13.5", features = ["blocking", "json"] }
+semver = "1.0.28"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
