@@ -72,6 +72,8 @@ cargo msrv-pin <toolchain> [-C <path>] [-v]
 
 ## How it works
 
+1. If `Cargo.lock` was written by a newer `cargo` than the target toolchain
+   understands, delete it and let the target toolchain regenerate it first.
 1. Read `cargo metadata` to find every registry dependency whose declared
    `rust_version` exceeds the target toolchain.
 1. For each one, query crates.io for the highest non-yanked, non-pre-release

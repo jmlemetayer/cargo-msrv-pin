@@ -11,6 +11,7 @@
 mod command;
 mod downgrade;
 mod error;
+mod lockfile;
 mod metadata;
 mod registry;
 mod version;

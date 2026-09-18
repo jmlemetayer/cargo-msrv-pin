@@ -2,10 +2,12 @@
 //!
 //! Repeatedly finds registry packages whose declared MSRV exceeds the target
 //! toolchain and downgrades them one at a time, until nothing is left to fix,
-//! then verifies the result with `cargo check`.
+//! then verifies the result with `cargo check`. Recovers first if
+//! `Cargo.lock` itself can't be read by the target toolchain.
 
 use crate::command::command_run;
 use crate::error::{Error, Result};
+use crate::lockfile;
 use crate::metadata::{cargo_metadata, incompatible_packages};
 use crate::registry::resolve_compatible_crate_version;
 use crate::version::Toolchain;
@@ -51,6 +53,7 @@ fn try_advance(name: &str, version: &str, toolchain: &Toolchain) -> Result<bool>
 /// `toolchain`, then verify the build with `cargo +<toolchain> check`.
 pub fn run(toolchain: &str) -> Result<()> {
     let toolchain = Toolchain::parse(toolchain)?;
+    lockfile::ensure_readable_by(&toolchain.raw)?;
     let mut exhausted = true;
 
     for _ in 0..MAX_UPDATES {

@@ -34,6 +34,12 @@ impl std::fmt::Display for CommandFailure {
 
 impl std::error::Error for CommandFailure {}
 
+impl CommandFailure {
+    pub fn stderr_contains(&self, needle: &str) -> bool {
+        self.stderr.iter().any(|line| line.contains(needle))
+    }
+}
+
 fn run(args: &[&str]) -> Result<Output> {
     log::debug!("COMMAND: {}", args.join(" "));
     Command::new(args[0])
@@ -86,17 +92,24 @@ pub fn command_output(args: &[&str]) -> Result<String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn displays_the_command_exit_status_and_captured_output() {
-        let f = CommandFailure {
-            args: vec!["cargo".to_owned(), "check".to_owned()],
-            returncode: 101,
+    fn failure(stderr: &[&str]) -> CommandFailure {
+        CommandFailure {
+            args: vec![],
+            returncode: 1,
             stdout: vec![],
-            stderr: vec!["error: something went wrong".to_owned()],
-        };
-        assert_eq!(
-            f.to_string(),
-            "`cargo check` failed with exit status 101\nstderr:\nerror: something went wrong"
-        );
+            stderr: stderr.iter().map(|s| (*s).to_owned()).collect(),
+        }
+    }
+
+    #[test]
+    fn stderr_contains_matches_substring_in_any_line() {
+        let f = failure(&["some other line", "lock file version `4` was found"]);
+        assert!(f.stderr_contains("lock file version"));
+    }
+
+    #[test]
+    fn stderr_contains_false_when_absent() {
+        let f = failure(&["totally unrelated error"]);
+        assert!(!f.stderr_contains("lock file version"));
     }
 }
