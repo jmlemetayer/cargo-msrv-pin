@@ -1,6 +1,6 @@
 [package]
 name = "cargo-msrv-pin"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 description = "Downgrade Cargo dependencies to versions compatible with a given toolchain"
 license = "MIT"
