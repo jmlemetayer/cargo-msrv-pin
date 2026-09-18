@@ -3,8 +3,9 @@
 //!
 //! Finds every registry dependency whose declared MSRV exceeds the target
 //! toolchain and downgrades it to the highest still-compatible version,
-//! relaxing a blocking Cargo.toml requirement when a plain downgrade isn't
-//! enough, then verifies the result with `cargo check`.
+//! climbing the dependency graph or relaxing a blocking Cargo.toml
+//! requirement when a plain downgrade isn't enough, then verifies the
+//! result with `cargo check`.
 //!
 //! Invoke either directly (`cargo-msrv-pin <toolchain>`) or as a cargo
 //! subcommand (`cargo msrv-pin <toolchain>`).

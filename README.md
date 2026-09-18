@@ -78,6 +78,11 @@ cargo msrv-pin <toolchain> [-C <path>] [-v]
    `rust_version` exceeds the target toolchain.
 1. For each one, query crates.io for the highest non-yanked, non-pre-release
    version whose own `rust_version` fits the target toolchain.
+   - If none exists, the package might still only be in the graph because
+     something depending on it chose to pull in that version, not because
+     of a real constraint (e.g. package A depends on package B only for a
+     certain target or feature). Try downgrading that dependent instead,
+     climbing further up the graph if needed.
    - If it's a direct dependency whose own `Cargo.toml` entry rules out
      that version, relax the entry first. Otherwise the downgrade would
      fail the same way no matter how many times it's retried.
