@@ -19,6 +19,15 @@ const USER_AGENT: &str = concat!(
     ")"
 );
 
+/// crates.io's maximum page size. Crates with more releases than this need
+/// more than one page, handled by following `meta.next_page` below.
+const VERSIONS_PER_PAGE: u32 = 100;
+
+/// Safety net against an unbounded number of pages, e.g. from a crates.io
+/// response that never sets `next_page` to `null`. No real crate comes
+/// remotely close to needing this many pages.
+const MAX_VERSION_PAGES: usize = 1000;
+
 #[derive(Deserialize)]
 pub struct CrateVersion {
     pub num: String,
@@ -27,27 +36,55 @@ pub struct CrateVersion {
 }
 
 #[derive(Deserialize)]
-struct CratesResponse {
-    versions: Vec<CrateVersion>,
+struct ResponseMeta {
+    next_page: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct CratesResponse {
+    versions: Vec<CrateVersion>,
+    meta: ResponseMeta,
+}
+
+/// All of a crate's published versions, across as many pages as crates.io
+/// returns. Sorted newest-first by crates.io, but callers should not rely on
+/// that: nothing here re-sorts before returning.
 pub fn fetch_crate_versions(crate_name: &str) -> Result<Vec<CrateVersion>> {
-    let url = format!("https://crates.io/api/v1/crates/{crate_name}/versions?per_page=100");
-    let response = reqwest::blocking::Client::new()
-        .get(&url)
-        .header(reqwest::header::USER_AGENT, USER_AGENT)
-        .send()
-        .map_err(|source| Error::CratesIo {
-            action: "querying crates.io",
+    let client = reqwest::blocking::Client::new();
+    let mut versions = Vec::new();
+    let mut url = format!(
+        "https://crates.io/api/v1/crates/{crate_name}/versions?per_page={VERSIONS_PER_PAGE}"
+    );
+
+    for _ in 0..MAX_VERSION_PAGES {
+        let response = client
+            .get(&url)
+            .header(reqwest::header::USER_AGENT, USER_AGENT)
+            .send()
+            .map_err(|source| Error::CratesIo {
+                action: "querying crates.io",
+                crate_name: crate_name.to_owned(),
+                source,
+            })?;
+        let response: CratesResponse = response.json().map_err(|source| Error::CratesIo {
+            action: "parsing crates.io's response",
             crate_name: crate_name.to_owned(),
             source,
         })?;
-    let response: CratesResponse = response.json().map_err(|source| Error::CratesIo {
-        action: "parsing crates.io's response",
-        crate_name: crate_name.to_owned(),
-        source,
-    })?;
-    Ok(response.versions)
+        versions.extend(response.versions);
+
+        match response.meta.next_page {
+            Some(next_page) => {
+                url = format!("https://crates.io/api/v1/crates/{crate_name}/versions{next_page}");
+            }
+            None => return Ok(versions),
+        }
+    }
+
+    log::warn!(
+        "stopped after {MAX_VERSION_PAGES} pages of versions for '{crate_name}', crates.io still had more"
+    );
+    Ok(versions)
 }
 
 /// Among non-yanked, non-pre-release `versions`, the highest one whose
